@@ -1,4 +1,5 @@
 import random
+import csv
 
 PRINT_STEPS = True
 
@@ -11,6 +12,7 @@ class Node:
         self.send_queue = list()  # [ (destination, packet_size) ]
         self.in_progress = list()  # [ {send_to, destination, amount_left, packet_size} ]
         self.recv_queue = dict()  # { (src, dest) -> cur_amount }
+        self.dont_do_yet = list()  # [ dest ]
 
     def __repr__(self):
         return "Node " + str(self.name)
@@ -43,13 +45,14 @@ class Node:
     def process_queue(self):
         iteration_capacity = self.neighbors.copy()
         # transfer what you can
-        for packet in self.in_progress:
+        for packet in (p for p in self.in_progress if p["destination"] not in self.dont_do_yet):
             amount_possible = min(packet["amount_left"], iteration_capacity[packet["send_to"]])
             if amount_possible:
                 if (self, packet["destination"]) not in packet["send_to"].recv_queue:
                     packet["send_to"].recv_queue[(self, packet["destination"])] = 0
                 if packet["amount_left"] - amount_possible == 0:  # it finishes sending on this iteration
                     del packet["send_to"].recv_queue[(self, packet["destination"])]
+                    packet["send_to"].dont_do_yet.append(packet["destination"])
                     if packet["send_to"] is not packet["destination"]:
                         packet["send_to"].send_queue.append((packet["destination"], packet["packet_size"]))
                 packet["amount_left"] -= amount_possible
@@ -62,7 +65,6 @@ class Node:
         for packet in self.in_progress[:]:
             if packet["amount_left"] == 0:
                 self.in_progress.remove(packet)
-
 
     def loop_step(self):
         self.route_packets()
@@ -146,6 +148,31 @@ def set_up_network(node_list, network):
                 print(str(node)+" -> "+str(neighbor)+": "+str(path_len))
 
 
+def find_or_create_node(name, node_list, names):
+    if name not in names:
+        new_node = Node(name)
+        names.add(name)
+        node_list.append(new_node)
+        return new_node
+    else:
+        for node in node_list:
+            if node.name == name:
+                return node
+
+
+def load_from_file(filename):
+    node_list = list()
+    network = list()
+    names = set()
+    with open(filename) as csvfile:
+        reader = csv.reader(csvfile)
+        for row in reader:
+            node1 = find_or_create_node(row[0], node_list, names)
+            node2 = find_or_create_node(row[1], node_list, names)
+            network.append((node1, node2, int(row[2])))
+    return node_list, network
+
+
 def send_packet(src, dest, size):
     src.send_queue.append((dest, size))
 
@@ -156,8 +183,11 @@ def network_active(node_list):
             return True
 
 
-def main():
-    node_list, network = create_network(nodes=9, fixed_capacity=1)
+def main(filename=""):
+    if filename:
+        node_list, network = load_from_file(filename)
+    else:
+        node_list, network = create_network(nodes=9, fixed_capacity=1)
     set_up_network(node_list, network)
 
     packets_to_send = [  # (iteration#, source, dest, size)
@@ -169,6 +199,8 @@ def main():
     iteration_num = 0
     # MAIN LOOP
     while packets_to_send or network_active(node_list):
+        if PRINT_STEPS:
+            print("ITERATION "+str(iteration_num+1))
         # send packets if it's their turn
         for packet in packets_to_send[:]:
             if iteration_num == packet[0]:
@@ -176,9 +208,11 @@ def main():
                 packets_to_send.remove(packet)
         for node in node_list:
             node.loop_step()
+        for node in node_list:
+            node.dont_do_yet = list()
         iteration_num += 1
     print("Simulation took "+str(iteration_num)+" iterations")
 
 
 if __name__ == "__main__":
-    main()
+    main(filename="/home/conrad/PycharmProjects/CSE4344/testNetwork.csv")
