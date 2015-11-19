@@ -1,7 +1,8 @@
 import random
 import csv
 
-PRINT_STEPS = True
+PRINT_STEPS = False
+PRINT_NETWORK = True
 
 
 class Node:
@@ -71,7 +72,7 @@ class Node:
         self.process_queue()
 
 
-def create_network(nodes=9, fixed_capacity=0):
+def create_network(nodes=1, fixed_capacity=0):
     """
     :param nodes: how many nodes in the network
     :param fixed_capacity: should there be a fixed capacity between nodes (int)
@@ -96,6 +97,8 @@ def create_network(nodes=9, fixed_capacity=0):
             network.append((node, random.choice(list(n for n in node_list if n is not node)), fixed_capacity if fixed_capacity else random.randint(1, 10)))
     if PRINT_STEPS:
         print("Created network with "+str(nodes)+" nodes.")
+    print node_list(0)
+    print network
     return node_list, network
 
 
@@ -142,7 +145,7 @@ def set_up_network(node_list, network):
         for dest, (send_to, path_len) in paths.items():
             if send_to:
                 node.add_lookup(dest, send_to if send_to is not node else dest, path_len)
-    if PRINT_STEPS:
+    if PRINT_NETWORK:
         for node in node_list:
             for neighbor, path_len in node.neighbors.items():
                 print(str(node)+" -> "+str(neighbor)+": "+str(path_len))
@@ -215,4 +218,5 @@ def main(filename=""):
 
 
 if __name__ == "__main__":
-    main(filename="/home/conrad/PycharmProjects/CSE4344/testNetwork.csv")
+    main(filename="C:/Users/Caleb/CSE4344/CSE4344/testNetwork.csv")
+
