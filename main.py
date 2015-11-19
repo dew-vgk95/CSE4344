@@ -1,8 +1,8 @@
 import random
 import csv
 
-PRINT_STEPS = False
-PRINT_NETWORK = True
+PRINT_STEPS = True
+
 
 
 class Node:
@@ -14,7 +14,6 @@ class Node:
         self.in_progress = list()  # [ {send_to, destination, amount_left, packet_size} ]
         self.recv_queue = dict()  # { (src, dest) -> cur_amount }
         self.dont_do_yet = list()  # [ dest ]
-
     def __repr__(self):
         return "Node " + str(self.name)
 
@@ -72,7 +71,7 @@ class Node:
         self.process_queue()
 
 
-def create_network(nodes=1, fixed_capacity=0):
+def create_network(nodes=9, fixed_capacity=0):
     """
     :param nodes: how many nodes in the network
     :param fixed_capacity: should there be a fixed capacity between nodes (int)
@@ -97,8 +96,6 @@ def create_network(nodes=1, fixed_capacity=0):
             network.append((node, random.choice(list(n for n in node_list if n is not node)), fixed_capacity if fixed_capacity else random.randint(1, 10)))
     if PRINT_STEPS:
         print("Created network with "+str(nodes)+" nodes.")
-    print node_list(0)
-    print network
     return node_list, network
 
 
@@ -112,6 +109,7 @@ def calculate_paths(node_list, source):
     result = {n: (None, float("inf")) for n in node_list}
     result[source] = (None, 0)
     node_list = node_list[:]  # make a copy for use in here
+    #dijstra's algorithm
     while node_list:
         min_node = None
         min_node_dist = float("inf")
@@ -138,6 +136,7 @@ def calculate_paths(node_list, source):
 
 
 def set_up_network(node_list, network):
+    counter = 0
     for node in node_list:
         node.get_adjacent_nodes(network)
     for node in node_list:
@@ -145,10 +144,12 @@ def set_up_network(node_list, network):
         for dest, (send_to, path_len) in paths.items():
             if send_to:
                 node.add_lookup(dest, send_to if send_to is not node else dest, path_len)
-    if PRINT_NETWORK:
+    if PRINT_STEPS:
         for node in node_list:
             for neighbor, path_len in node.neighbors.items():
                 print(str(node)+" -> "+str(neighbor)+": "+str(path_len))
+                counter = counter + 1
+    
 
 
 def find_or_create_node(name, node_list, names):
@@ -185,12 +186,51 @@ def network_active(node_list):
         if node.send_queue or node.in_progress:
             return True
 
+def appendQueue (queue, release, flow):
+    queue[release] = flow
+
+def readFile(file):
+    content = [content.rstrip('\n') for content in open(file)]
+    lines = []
+    queue = []
+    for x in range(len(content)):
+        lines= content[x].split(":")
+        queue.append(lines)
+    #print queue
+    return queue
+def makeDic(q):
+    queue = {}
+    for x in range(len(q)):
+        array = q[x]
+        release = array[0]
+        flow = []
+        for x in range(len(array)-1):
+            flow.append(array[x+1])
+        queue[release] = flow
+    #print queue
+    return queue
+
 
 def main(filename=""):
+
+    filenamee = "/Users/viral/Documents/SMU/Fall 2015/Networks/CSE4344/inputflows.txt"
+    f = readFile(filenamee)
+    d = makeDic(f)
+
     if filename:
         node_list, network = load_from_file(filename)
+        print "node_list"
+        print node_list
+        print "network"
+        print network
+        print "HI"
     else:
         node_list, network = create_network(nodes=9, fixed_capacity=1)
+        print "node_list"
+        print node_list
+        print "network"
+        print network
+        print "stop"
     set_up_network(node_list, network)
 
     packets_to_send = [  # (iteration#, source, dest, size)
@@ -218,5 +258,4 @@ def main(filename=""):
 
 
 if __name__ == "__main__":
-    main(filename="C:/Users/Caleb/CSE4344/CSE4344/testNetwork.csv")
-
+    main(filename="/Users/viral/Documents/SMU/Fall 2015/Networks/CSE4344/testNetwork.csv")
